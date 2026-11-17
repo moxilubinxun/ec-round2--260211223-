@@ -19,14 +19,15 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
+#include "stm32f4xx_hal_rcc.h"
 #include "tim.h"
-#include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +54,40 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+//printf 重定向串口1
+int _write(int file, char *ptr, int len)
+{
+  HAL_UART_Transmit(&huart1, (uint8_t*)ptr, len, HAL_MAX_DELAY);
+  return len;
+}
+// 获取复位原因
+const char* Get_Reset_Cause(void)
+{
+  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) != RESET)
+  {
+    return "Independent Watchdog Reset";
+  }
+  else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST) != RESET)
+  {
+    return "Window Watchdog Reset";
+  }
+  else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST) != RESET)
+  {
+    return "Software Reset";
+  }
+  else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST) != RESET)
+  {
+    return "Power-On Reset";
+  }
+  else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST) != RESET)
+  {
+    return "External Pin Reset";
+  }
+  else
+  {
+    return "Unknown Reset Cause";
+  }
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -69,7 +103,10 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+const char*project_name = "ec-round2-<260211223>";
+printf("Project Name: %s,SYSCLK: %luHZ,Reset Cause: %s\n", project_name, HAL_RCC_GetSysClockFreq(), Get_Reset_Cause());
 
+__HAL_RCC_CLEAR_RESET_FLAGS();//清除复位标志
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -93,7 +130,6 @@ int main(void)
   MX_I2C1_Init();
   MX_USB_DEVICE_Init();
   MX_TIM3_Init();
-  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
