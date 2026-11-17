@@ -19,8 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
-#include "stm32f4xx_hal_rcc.h"
 #include "tim.h"
+#include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
 
@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include"usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,10 +104,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-const char*project_name = "ec-round2-<260211223>";
-printf("Project Name: %s,SYSCLK: %luHZ,Reset Cause: %s\n", project_name, HAL_RCC_GetSysClockFreq(), Get_Reset_Cause());
-
-__HAL_RCC_CLEAR_RESET_FLAGS();//清除复位标志
+uint8_t led_toggle_enable = 1; //允许自动闪烁
+uint32_t led_tick =0; //闪烁计时器
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -130,7 +129,12 @@ __HAL_RCC_CLEAR_RESET_FLAGS();//清除复位标志
   MX_I2C1_Init();
   MX_USB_DEVICE_Init();
   MX_TIM3_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+const char*project_name = "ec-round2-<260211223>";
+printf("Project Name: %s,SYSCLK: %luHZ,Reset Cause: %s\n", project_name, HAL_RCC_GetSysClockFreq(), Get_Reset_Cause());
+
+__HAL_RCC_CLEAR_RESET_FLAGS();//清除复位标志 
 
   /* USER CODE END 2 */
 
@@ -138,6 +142,29 @@ __HAL_RCC_CLEAR_RESET_FLAGS();//清除复位标志
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    if(led_toggle_enable && (HAL_GetTick() - led_tick >= 500)) //每500ms切换一次LED状态
+    {
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+      led_tick = HAL_GetTick();
+    }
+    /* 按键检测：仅在一次"按下"时触发，按住不会连续翻转 */
+    static uint8_t key_last_pressed = 0;
+    uint8_t key_pressed = (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET); //按键接在PA0，低电平按下
+
+    if(key_pressed && !key_last_pressed) //按下沿
+    {
+      HAL_Delay(20); //消抖延时
+      if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+      {
+        led_toggle_enable = !led_toggle_enable; //切换LED自动闪烁开关
+        if(led_toggle_enable)
+        {
+          led_tick = HAL_GetTick(); //恢复闪烁时重新计时
+        }
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); //立即切换一次LED状态，给用户反馈
+      }
+    }
+    key_last_pressed = key_pressed;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
